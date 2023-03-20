@@ -20,6 +20,20 @@ class Node(ABC):
         Multiple are allowed"""
         self.parents : List["Node"] = []
         self.children : List["Node"] = []
+
+    def __hash__(self) -> int:
+        """
+        We implement a hash function, since
+        then we can put these objects into nx
+        without an issue
+        """
+        return id(self)
+    
+    def __eq__(self, __value: object) -> bool:
+        """
+        Equality checking also just uses IDs
+        """
+        return id(self) == id(__value)
     
     @abstractmethod
     def backward(self, *args, **kwargs) -> None:
@@ -56,6 +70,15 @@ class Operator(Node, ABC):
 
     @abstractmethod
     def backward(self) -> None:
+        """
+        A backward function that all operators implement
+        that updates the gradient of the directly connected
+        nodes. This is not responsible for a DFS of parents, as
+        that is done by another component that analyzes
+        the compute graph, finds a topological ordering,
+        and goes through it in reverse to compute all gradients
+        in order.
+        """
         if len(self.children) != 1:
             raise ValueError(f"{len(self.children)} is not a supported number of children for an operator")
     
@@ -103,3 +126,16 @@ class Tensor(Node):
         from adigrad.autograd.operators import ElementwiseMulOp
         mulOp : ElementwiseMulOp = ElementwiseMulOp()
         return mulOp.forward(self, obj2)
+    
+    def __pow__(self, obj2 : "Tensor") -> "Tensor":
+        from adigrad.autograd.operators import PowerOp
+        powerOp : PowerOp = PowerOp()
+
+        return powerOp.forward(self, obj2)
+    
+    @staticmethod
+    def sum(tensorIn : Union[List["Tensor"], "Tensor"]) -> "Tensor":
+        from adigrad.autograd.operators import SumOp
+        sumOp : SumOp = SumOp()
+
+        return sumOp.forward(tensorIn)
